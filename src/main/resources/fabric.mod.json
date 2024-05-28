@@ -3,23 +3,23 @@
   "id": "nether-bedrock-cracker",
   "version": "${version}",
 
-  "name": "Nether Bedrock Cracker Mod",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "name": "Nether Bedrock Cracker",
+  "description": "Fabric clientside utility mod for using 19MisterX98's nether bedrock seed cracker.",
   "authors": [
-    "Me!"
+    "Crosby"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "sources": "https://github.com/RacoonDog/Nether-Bedrock-Cracker-Mod",
+    "issues": "https://github.com/RacoonDog/Nether-Bedrock-Cracker-Mod/issues"
   },
 
-  "license": "CC0-1.0",
+  "license": "MIT",
   "icon": "assets/nether-bedrock-cracker/icon.png",
 
   "environment": "client",
   "entrypoints": {
     "client": [
-      "com.ziloka.NetherBedrockCracker.NetherBedrockCrackerMod"
+      "io.github.racoondog.nbcracker.NetherBedrockCrackerMod"
     ]
   },
 

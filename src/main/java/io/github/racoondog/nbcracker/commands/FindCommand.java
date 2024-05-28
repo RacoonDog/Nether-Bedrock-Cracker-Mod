@@ -1,4 +1,4 @@
-package com.ziloka.NetherBedrockCracker.commands;
+package io.github.racoondog.nbcracker.commands;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
