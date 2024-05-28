@@ -1,6 +1,11 @@
 package com.ziloka.NetherBedrockCracker.commands;
 
+import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.LiteralMessage;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.block.Blocks;
 import net.minecraft.text.ClickEvent;
@@ -8,79 +13,78 @@ import net.minecraft.text.HoverEvent;
 import net.minecraft.text.Text;
 import net.minecraft.text.Texts;
 import net.minecraft.util.Formatting;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.Vec3i;
+import net.minecraft.util.math.*;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.ChunkSection;
+import net.minecraft.world.chunk.ChunkStatus;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.*;
 
 public class FindCommand {
-
-    public static final int radius = 16 * 8;
+    private static final SimpleCommandExceptionType NOT_IN_NETHER = new SimpleCommandExceptionType(new LiteralMessage("You are not in the nether."));
 
     public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher) {
         dispatcher.register(literal("nethercracker").then(literal("find").executes(ctx -> run(ctx.getSource()))));
     }
 
-    private static int run(FabricClientCommandSource source) {
+    private static int run(FabricClientCommandSource source) throws CommandSyntaxException {
         World world = source.getWorld();
-        Vec3d position = source.getPosition();
-        BlockPos senderPos = new BlockPos(new Vec3i((int) position.getX(), (int) position.getY(), (int) position.getZ()));
-        ChunkPos chunkPos = new ChunkPos(senderPos);
+        if (!world.getRegistryKey().getValue().getPath().equals("the_nether")) {
+            throw NOT_IN_NETHER.create();
+        }
 
-        List<BlockPos> blockCandidates = new ArrayList<>();
+        ChunkPos chunkPos = source.getPlayer().getChunkPos();
+        int radius = Math.max(2, source.getClient().options.getClampedViewDistance()) + 3;
 
-        int chunkRadius = (radius >> 4) + 1;
-        for (int r = 0; r < chunkRadius; r++) {
-            for (int chunkX = chunkPos.x - r; chunkX <= chunkPos.x + r; chunkX++) {
-                for (int chunkZ = chunkPos.z - r; chunkZ <= chunkPos.z
-                        + r; chunkZ += chunkX == chunkPos.x - r || chunkX == chunkPos.x + r ? 1 : r + r) {
-                    Chunk chunk = world.getChunk(chunkX, chunkZ);
-                    addBedrockBlocks(chunk, blockCandidates);
-                }
+        List<BlockPos> blockCandidates = new ObjectArrayList<>(1024);
+
+        for (int chunkX = chunkPos.x - radius, maxX = chunkPos.x + radius; chunkX <= maxX; chunkX++) {
+            for (int chunkZ = chunkPos.z - radius, maxZ = chunkPos.z + radius; chunkZ <= maxZ; chunkZ++) {
+                Chunk chunk = world.getChunk(chunkX, chunkZ, ChunkStatus.FULL, false);
+                if (chunk != null) addBedrockBlocks(chunk, blockCandidates);
             }
         }
 
         source.sendFeedback(Text.literal(String.format("Found %d bedrocks at y = 4 or y = 123", blockCandidates.size())));
 
-        String str = "";
+        StringBuilder sb = new StringBuilder(blockCandidates.size() * 12);
         for (BlockPos block : blockCandidates) {
-            str += String.format("%d %d %d\n", block.getX(), block.getY(), block.getZ());
+            sb.append(block.getX()).append(' ').append(block.getY()).append(' ').append(block.getZ()).append('\n');
         }
+        String str = sb.toString();
 
-        String finalStr = str;
         Text text = Texts.bracketed(
                 (Text.literal("Click here to copy block info")).styled(style -> style.withColor(Formatting.GREEN)
-                        .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, finalStr))
+                        .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, str))
                         .withHoverEvent(
                                 new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.translatable("chat.copy.click")))
-                        .withInsertion(finalStr)));
+                        .withInsertion(str)));
 
         source.sendFeedback(text);
 
-        return 1;
+        return Command.SINGLE_SUCCESS;
     }
 
     private static void addBedrockBlocks(Chunk chunk, List<BlockPos> blockCandidates) {
-        BlockPos.Mutable mutablePos = new BlockPos.Mutable();
+        ChunkSection topSection = chunk.getSection(chunk.getSectionIndex(4));
+        ChunkSection bottomSection = chunk.getSection(chunk.getSectionIndex(123));
+        int worldX = chunk.getPos().getStartX();
+        int worldZ = chunk.getPos().getStartZ();
 
         // search every column for the block
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
-                int worldX = (chunk.getPos().x << 4) + x;
-                int worldZ = (chunk.getPos().z << 4) + z;
-                // if floor or ceiling bedrock
-                if (chunk.getBlockState(mutablePos.set(worldX, 4, worldZ)).isOf(Blocks.BEDROCK) || chunk.getBlockState(mutablePos.set(worldX, 123, worldZ)).isOf(Blocks.BEDROCK)) {
-                    blockCandidates.add(mutablePos.toImmutable());
+                if (topSection.getBlockState(x, 4, z).isOf(Blocks.BEDROCK)) {
+                    blockCandidates.add(new BlockPos(worldX + x, 4, worldZ + z));
+                }
+
+                if (bottomSection.getBlockState(x, 123 & 15, z).isOf(Blocks.BEDROCK)) {
+                    blockCandidates.add(new BlockPos(worldX + x, 123, worldZ + z));
                 }
             }
         }
     }
-
 }
