@@ -3,7 +3,7 @@
   "id": "nether-bedrock-cracker",
   "version": "${version}",
 
-  "name": "Nether Bedrock Cracker",
+  "name": "Nether Bedrock Cracker Utility",
   "description": "Fabric clientside utility mod for using 19MisterX98's nether bedrock seed cracker.",
   "authors": [
     "Crosby"
